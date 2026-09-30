@@ -1,5 +1,192 @@
 {
   "schema_version": 1,
-  "articles": [],
-  "papers": {}
+  "articles": [
+    {
+      "volume": 1,
+      "created_at": "2026-09-30 14:15",
+      "group_id": "g_fri",
+      "group_name": "强化学习、AI 安全与 AI for Science",
+      "theme": "世界模型与安全对齐",
+      "status": "generated",
+      "title": "AI 论文周报 Vol.01｜世界模型与安全对齐",
+      "files": {
+        "validation": "output/2026-09-30-vol01-g_fri.validation.md",
+        "markdown": "output/2026-09-30-vol01-g_fri.md",
+        "html": "output/2026-09-30-vol01-g_fri.html"
+      },
+      "papers": [
+        {
+          "uid": "title:PointWorld: Scaling 3D World Models for In-The-Wild Robotic ",
+          "source": "conference",
+          "arxiv_id": null,
+          "doi": null,
+          "title": "PointWorld: Scaling 3D World Models for In-The-Wild Robotic Manipulation",
+          "status": "正式发表",
+          "venue": "CVPR 2026",
+          "year": 2026,
+          "url": "https://openaccess.thecvf.com/content/CVPR2026/html/Huang_PointWorld_Scaling_3D_World_Models_for_In-The-Wild_Robotic_Manipulation_CVPR_2026_paper.html",
+          "topic_id": "ai4science_robotics",
+          "score": 31.5
+        },
+        {
+          "uid": "title:Ctrl-World: A Controllable Generative World Model for Robot ",
+          "source": "conference",
+          "arxiv_id": null,
+          "doi": null,
+          "title": "Ctrl-World: A Controllable Generative World Model for Robot Manipulation",
+          "status": "正式发表",
+          "venue": "ICLR",
+          "year": 2026,
+          "url": "https://iclr.cc/virtual/2026/poster/10011332",
+          "topic_id": "ai4science_robotics",
+          "score": 28.5
+        },
+        {
+          "uid": "title:Bias Fitting to Mitigate Length Bias of Reward Model in RLHF",
+          "source": "conference",
+          "arxiv_id": null,
+          "doi": null,
+          "title": "Bias Fitting to Mitigate Length Bias of Reward Model in RLHF",
+          "status": "正式发表",
+          "venue": "ACL 2026",
+          "year": 2026,
+          "url": "https://aclanthology.org/2026.acl-long.133/",
+          "topic_id": "rl_training",
+          "score": 27.5
+        },
+        {
+          "uid": "title:RC-NF: Robot-Conditioned Normalizing Flow for Real-Time Anom",
+          "source": "conference",
+          "arxiv_id": null,
+          "doi": null,
+          "title": "RC-NF: Robot-Conditioned Normalizing Flow for Real-Time Anomaly Detection in Robotic Manipulation",
+          "status": "正式发表",
+          "venue": "CVPR 2026",
+          "year": 2026,
+          "url": "https://openaccess.thecvf.com/content/CVPR2026/html/Zhou_RC-NF_Robot-Conditioned_Normalizing_Flow_for_Real-Time_Anomaly_Detection_in_Robotic_CVPR_2026_paper.html",
+          "topic_id": "ai4science_robotics",
+          "score": 26.5
+        },
+        {
+          "uid": "arxiv:2609.37530",
+          "source": "arxiv",
+          "arxiv_id": "2609.37530",
+          "doi": null,
+          "title": "RawVLA: Embodied Neural Image Signal Processor For Robotic Manipulation",
+          "status": "预印本",
+          "venue": null,
+          "year": 2026,
+          "url": "https://arxiv.org/abs/2609.37530",
+          "topic_id": "ai4science_robotics",
+          "score": 26.0
+        },
+        {
+          "uid": "title:Adversarial Déjà Vu: Jailbreak Dictionary Learning for Stron",
+          "source": "conference",
+          "arxiv_id": null,
+          "doi": null,
+          "title": "Adversarial Déjà Vu: Jailbreak Dictionary Learning for Stronger Generalization to Unseen Attacks",
+          "status": "正式发表",
+          "venue": "ICLR",
+          "year": 2026,
+          "url": "https://iclr.cc/virtual/2026/poster/10009061",
+          "topic_id": "ai_safety",
+          "score": 24.5
+        }
+      ],
+      "warnings": [
+        "文章中出现来源之外的链接，必须人工确认后才能发布：https://openaccess.thecvf.com/content/CVPR2026/papers/Huang_PointWorld_Scaling_3D_World_Models_for_In-The-Wild_Robotic_Manipulation_CVPR_2026_paper.pdf",
+        "文章中出现来源之外的链接，必须人工确认后才能发布：https://openaccess.thecvf.com/content/CVPR2026/papers/Zhou_RC-NF_Robot-Conditioned_Normalizing_Flow_for_Real-Time_Anomaly_Detection_in_Robotic_CVPR_2026_paper.pdf",
+        "[提醒] 字段超出字数上限：background（172 字 / 上限 110 字）、experiments（159 字 / 上限 100 字）"
+      ],
+      "published_at": null,
+      "id": "2026-09-30-g_fri"
+    }
+  ],
+  "papers": {
+    "title:PointWorld: Scaling 3D World Models for In-The-Wild Robotic ": {
+      "keys": [
+        "title:PointWorld: Scaling 3D World Models for In-The-Wild Robotic "
+      ],
+      "title": "PointWorld: Scaling 3D World Models for In-The-Wild Robotic Manipulation",
+      "arxiv_id": null,
+      "doi": null,
+      "status": "正式发表",
+      "first_seen": "2026-09-30T06:15:40+00:00",
+      "last_seen": "2026-09-30T06:15:40+00:00",
+      "articles": [
+        "2026-09-30-g_fri"
+      ]
+    },
+    "title:Ctrl-World: A Controllable Generative World Model for Robot ": {
+      "keys": [
+        "title:Ctrl-World: A Controllable Generative World Model for Robot "
+      ],
+      "title": "Ctrl-World: A Controllable Generative World Model for Robot Manipulation",
+      "arxiv_id": null,
+      "doi": null,
+      "status": "正式发表",
+      "first_seen": "2026-09-30T06:15:40+00:00",
+      "last_seen": "2026-09-30T06:15:40+00:00",
+      "articles": [
+        "2026-09-30-g_fri"
+      ]
+    },
+    "title:Bias Fitting to Mitigate Length Bias of Reward Model in RLHF": {
+      "keys": [
+        "title:Bias Fitting to Mitigate Length Bias of Reward Model in RLHF"
+      ],
+      "title": "Bias Fitting to Mitigate Length Bias of Reward Model in RLHF",
+      "arxiv_id": null,
+      "doi": null,
+      "status": "正式发表",
+      "first_seen": "2026-09-30T06:15:40+00:00",
+      "last_seen": "2026-09-30T06:15:40+00:00",
+      "articles": [
+        "2026-09-30-g_fri"
+      ]
+    },
+    "title:RC-NF: Robot-Conditioned Normalizing Flow for Real-Time Anom": {
+      "keys": [
+        "title:RC-NF: Robot-Conditioned Normalizing Flow for Real-Time Anom"
+      ],
+      "title": "RC-NF: Robot-Conditioned Normalizing Flow for Real-Time Anomaly Detection in Robotic Manipulation",
+      "arxiv_id": null,
+      "doi": null,
+      "status": "正式发表",
+      "first_seen": "2026-09-30T06:15:40+00:00",
+      "last_seen": "2026-09-30T06:15:40+00:00",
+      "articles": [
+        "2026-09-30-g_fri"
+      ]
+    },
+    "arxiv:2609.37530": {
+      "keys": [
+        "arxiv:2609.37530"
+      ],
+      "title": "RawVLA: Embodied Neural Image Signal Processor For Robotic Manipulation",
+      "arxiv_id": "2609.37530",
+      "doi": null,
+      "status": "预印本",
+      "first_seen": "2026-09-30T06:15:40+00:00",
+      "last_seen": "2026-09-30T06:15:40+00:00",
+      "articles": [
+        "2026-09-30-g_fri"
+      ]
+    },
+    "title:Adversarial Déjà Vu: Jailbreak Dictionary Learning for Stron": {
+      "keys": [
+        "title:Adversarial Déjà Vu: Jailbreak Dictionary Learning for Stron"
+      ],
+      "title": "Adversarial Déjà Vu: Jailbreak Dictionary Learning for Stronger Generalization to Unseen Attacks",
+      "arxiv_id": null,
+      "doi": null,
+      "status": "正式发表",
+      "first_seen": "2026-09-30T06:15:40+00:00",
+      "last_seen": "2026-09-30T06:15:40+00:00",
+      "articles": [
+        "2026-09-30-g_fri"
+      ]
+    }
+  }
 }
