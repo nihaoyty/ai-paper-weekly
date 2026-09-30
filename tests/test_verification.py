@@ -382,3 +382,32 @@ class TestValidationReport:
         )
         assert "- 来源：arXiv" in report
         assert paper.arxiv_url in report
+
+
+class TestContextSnapshot:
+    def test_conference_pdf_url_is_in_the_snapshot(self) -> None:
+        """会议论文的 PDF 来自官方论文集，必须能在事实快照里找到。
+
+        快照里没有它，校验器就会把这条真实链接报成「来源之外的链接」——
+        每个 CVPR/ICLR 论文都会误报一次。
+        """
+        paper = Paper(
+            title="PointWorld",
+            source="conference",
+            venue="CVPR 2026",
+            venue_url="https://openaccess.thecvf.com/content/CVPR2026/html/x_paper.html",
+            pdf_url="https://openaccess.thecvf.com/content/CVPR2026/papers/x_paper.pdf",
+        )
+        assert paper.pdf_url in build_context(paper).snapshot
+
+    def test_conference_pdf_link_is_not_flagged_by_the_validator(self) -> None:
+        paper = Paper(
+            title="PointWorld",
+            source="conference",
+            venue="CVPR 2026",
+            venue_url="https://openaccess.thecvf.com/content/CVPR2026/html/x_paper.html",
+            pdf_url="https://openaccess.thecvf.com/content/CVPR2026/papers/x_paper.pdf",
+        )
+        context = build_context(paper)
+        issues = ArticleValidator().validate_article(f"{paper.pdf_url}\n", [context])
+        assert not any(paper.pdf_url in item for item in issues)

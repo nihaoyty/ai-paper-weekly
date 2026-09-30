@@ -71,6 +71,9 @@ def build_context(paper: Paper) -> PaperContext:
             f"[DOI] {paper.doi or paper.arxiv_doi or '无'}",
             f"[被引次数] {paper.cited_by_count if paper.cited_by_count is not None else '未知'}",
             f"[原文地址] {paper.source_url or '无'}",
+            # PDF 地址所有来源都可能用到（会议论文集也会给官方 PDF），
+            # 只对 arXiv 记录会让会议论文的 PDF 链接被判成「来源之外的链接」。
+            f"[PDF 地址] {paper.pdf_url or '无'}",
         ]
     )
     if paper.is_arxiv:
@@ -78,7 +81,6 @@ def build_context(paper: Paper) -> PaperContext:
             [
                 f"[arXiv 页面备注] {paper.comment or '无'}",
                 f"[arXiv journal-ref] {paper.journal_ref or '无'}",
-                f"[PDF 地址] {paper.pdf_url or '无'}",
             ]
         )
     lines.append(f"[摘要] {paper.abstract or '（本来源未提供摘要）'}")
