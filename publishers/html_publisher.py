@@ -37,6 +37,8 @@ STYLE_MAP: dict[str, str] = {
     "code": "background-color:#f2f2f2;padding:1px 5px;border-radius:3px;font-size:14px;color:#c7254e;font-family:Menlo,Consolas,monospace;",
     "pre": "background-color:#2d2d2d;color:#f8f8f2;padding:12px;border-radius:4px;overflow-x:auto;font-size:13px;line-height:1.6;",
     "hr": "border:none;border-top:1px solid #e5e5e5;margin:24px 0;",
+    # 配图：限制宽度让它自适应手机屏，居中显示
+    "img": "max-width:100%;height:auto;display:block;margin:0 auto 10px;",
     "table": "border-collapse:collapse;width:100%;margin:0 0 16px;font-size:15px;",
     "th": "border:1px solid #e5e5e5;padding:6px 8px;background-color:#fafafa;text-align:left;",
     "td": "border:1px solid #e5e5e5;padding:6px 8px;",
@@ -82,7 +84,19 @@ def _inline_styles(html: str) -> str:
     for tag, style in STYLE_MAP.items():
         pattern = re.compile(rf"<{tag}(\s[^>]*)?>", re.IGNORECASE)
         html = pattern.sub(
-            lambda match, t=tag, s=style: f'<{t}{match.group(1) or ""} style="{s}">',
+            lambda match, t=tag, s=style: _with_style(t, match.group(1), s),
             html,
         )
     return html
+
+
+def _with_style(tag: str, attrs: str | None, style: str) -> str:
+    """插样式时要把自闭合标签的斜杠先摘掉。
+
+    Markdown 输出的是 <img ... />，直接拼会变成 <img ... / style="...">，
+    斜杠跑到属性中间，是无效 HTML，公众号可能不认。
+    """
+    rest = (attrs or "").rstrip()
+    if rest.endswith("/"):
+        rest = rest[:-1].rstrip()
+    return f'<{tag}{rest} style="{style}">'

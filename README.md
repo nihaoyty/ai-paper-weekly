@@ -49,6 +49,7 @@ AI论文推送/
 │   ├── openalex_client.py           # OpenAlex：期刊检索 + 补 DOI / 发表来源
 │   ├── journal_client.py            # 期刊通道：按 OpenAlex source 找近期正式发表
 │   ├── crossref_client.py           # Crossref：期刊论文的权威出版证据
+│   ├── arxiv_figures.py             # 配图：从 arXiv HTML 版取 Figure 1
 │   ├── publication_verifier.py      # 发表状态核验（纯规则，不用大模型）
 │   └── venues/                      # 会议论文集通道
 │       ├── base.py                  #   采集基类 + 种子数据缓存（data/cache）
@@ -80,7 +81,7 @@ AI论文推送/
 │   ├── published.json               # 历史库（去重依据，云端跑必须入库）
 │   └── cache/                       # 论文集大文件缓存（40MB BibTeX 等，TTL 7 天）
 ├── output/                          # 每期产物
-└── tests/                           # 162 个单元测试，不联网
+└── tests/                           # 179 个单元测试，不联网
 ```
 
 ---
@@ -178,11 +179,11 @@ output/2026-09-21-vol01-g_mon.validation.md   ← 自动校验报告，发布前
 ## 五、测试
 
 ```bash
-# 当前共 162 个用例
+# 当前共 179 个用例
 .venv/bin/python -m pytest tests -q
 ```
 
-162 个测试覆盖：去重（arXiv ID / DOI / 官方论文页地址 + 跨来源标题归并）、标题加权、分数门槛、选文多样性、发表状态核验的 8 种分支、Crossref 复核的 5 种分支、校验器对「编造链接 / 对不上的数字 / 把预印本说成顶会」的拦截，历史库的读写与幂等，期刊通道（倒排摘要还原、来源解析），周计划（周起始日、缺额结转、上限截断、按期号日期统计、周内去重键、预印本硬上限），配置键是否真的驱动行为（历史库路径、时区、输出格式、预印本开关、去重开关），微信通知与公众号草稿箱（token 不泄露、通知失败不影响出稿、微信「HTTP 200 但 errcode 非 0」的识别、字段超限本地拦截），以及 5 个会议采集器的页面解析。全部不联网。
+179 个测试覆盖：去重（arXiv ID / DOI / 官方论文页地址 + 跨来源标题归并）、标题加权、分数门槛、选文多样性、发表状态核验的 8 种分支、Crossref 复核的 5 种分支、校验器对「编造链接 / 对不上的数字 / 把预印本说成顶会」的拦截，历史库的读写与幂等，期刊通道（倒排摘要还原、来源解析），周计划（周起始日、缺额结转、上限截断、按期号日期统计、周内去重键、预印本硬上限），配置键是否真的驱动行为（历史库路径、时区、输出格式、预印本开关、去重开关），配图（图注逐字引用、Figure 1 定位不误认 Figure 10、透明图转白底、超限自动压缩），微信通知与公众号草稿箱（token 不泄露、通知失败不影响出稿、微信「HTTP 200 但 errcode 非 0」的识别、字段超限本地拦截），以及 5 个会议采集器的页面解析。全部不联网。
 
 会议采集器的测试用**真实页面片段**做 fixture，页面改版时这些测试会失败，起到告警作用。
 
@@ -250,6 +251,7 @@ output/2026-09-21-vol01-g_mon.validation.md   ← 自动校验报告，发布前
 | `publication.allow_preprints` / `max_preprints_per_issue` | 生效 | `allow_preprints: false` 时上限直接归零 |
 | `publication` 其余（`allowed_statuses`、`priority`、`require_verified_venue`、`year_basis` 等） | 声明性 | 见下方说明 |
 | `venue_whitelist` | 生效 | 白名单匹配 |
+| `figures.enabled` / `max_width` / `max_bytes` | 生效 | 配图开关与压缩上限 |
 | `article` 的 `output_formats` / `field_budgets` / `synthesis_budgets` / `tolerance` | 生效 | |
 | `article` 的 `language` / `depth` / `sections` / `include_source_links` 等 | 声明性 | 文章结构由 prompts 与渲染器固定 |
 | `publishing.save_markdown` / `save_html` | 生效 | 与 `output_formats` 共同决定输出哪些文件 |
@@ -263,6 +265,23 @@ output/2026-09-21-vol01-g_mon.validation.md   ← 自动校验报告，发布前
 **为什么有些键故意不做成开关**：`require_verified_venue`、`allow_unverified_as_published`、`allow_fabricated_papers` 这几项的值是论文真实性的底线。把它们做成可关闭的开关，等于留一个「把没核验过的来源写成正式发表」的口子，与本项目的目标直接冲突。程序恒按最严格的方式执行，不接受配置放宽。
 
 `tests/test_config_wiring.py` 专门守住这条线：每接一个键，都有一处测试能在它失效时报警。
+
+### 配图：每篇取 Figure 1
+
+文章里每篇论文会配一张图，取自论文的 **Figure 1**（通常是总览/teaser 图）。
+
+图片来源是 **arXiv HTML 版**，不是会议论文集页面——会议页面只给 PDF，抽图要么装一整条 PDF 工具链、要么抽出一堆碎图；而 arXiv HTML 版把插图拆成了独立 PNG，还带 `<figcaption>` 原文图注。所以会议论文会先按标题**精确反查** arXiv 版本再取图。
+
+**实测覆盖率 4/6**（拿 Vol.01 那 6 篇跑的）：取不到的 2 篇，是因为它们的 Figure 1 在 arXiv HTML 版里没有对应图片（例如是视频 teaser）。**取不到就跳过，不拿别的图顶替**——否则「每篇取 Figure 1」这件事就不可预期了。
+
+两条底线，和项目一贯的「不编造」是一致的：
+
+- **图注逐字引用原文**，不改写也不翻译。大模型看不懂图，一旦去描述图里画了什么，就是编造；
+- **图片必须落盘、且回读非空**，才允许被写进文章。
+
+图片落在 `output/<期号>/figures/`，文章里用相对路径引用，HTML 与 Markdown 都能直接显示。落盘前会自动做两件事：**转白底 RGB**（arXiv 上不少图带透明通道，直接贴到公众号会变黑底）、**缩到 1200px 宽 / 900KB 以内**（公众号正文单图上限约 1MB，原图常有 2MB 以上）。
+
+> ⚠️ **有一个环节还没实测**：把带本地图片的 HTML 全选复制、粘到公众号后台时，图片会不会自动转存。这一步只有人工能验，见 [图片粘贴测试.html](file:///Users/yu/Desktop/AI论文推送/output/图片粘贴测试.html)。**如果图片粘不过去，配图功能对公众号路线就没意义**，需要改走 `media/uploadimg`（受 IP 白名单限制）。
 
 ---
 

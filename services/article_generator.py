@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Any
 
-from models import SOURCE_LABELS, PaperAnalysis
+from models import SOURCE_LABELS, Figure, PaperAnalysis
 from services import prompts
 from services.article_validator import ArticleValidator
 from services.llm_client import LLMClient, LLMError
@@ -145,6 +145,7 @@ class ArticleGenerator:
         synthesis: dict[str, Any],
         model_name: str,
         contexts: list[PaperContext],
+        figures: dict[str, Figure] | None = None,
     ) -> ArticleBundle:
         theme = str(synthesis.get("theme") or group_name).strip()
         title = f"AI 论文周报 Vol.{volume:02d}｜{theme}"
@@ -157,6 +158,7 @@ class ArticleGenerator:
             model_name=model_name,
             analyses=analyses,
             synthesis=synthesis,
+            figures=figures or {},
         )
         issues = self._validator.validate_article(markdown, contexts)
         issues.extend(self._length_issues(analyses, synthesis))
@@ -198,6 +200,7 @@ class ArticleGenerator:
         model_name: str,
         analyses: list[PaperAnalysis],
         synthesis: dict[str, Any],
+        figures: dict[str, Figure],
     ) -> str:
         parts: list[str] = [
             f"# {title}",
@@ -217,7 +220,11 @@ class ArticleGenerator:
         ]
 
         for index, analysis in enumerate(analyses):
-            parts.extend(self._render_paper_section(index, analysis))
+            parts.extend(
+                self._render_paper_section(
+                    index, analysis, figures.get(analysis.paper.uid)
+                )
+            )
 
         summary_index = len(analyses) + 2
         parts.extend(
@@ -248,7 +255,9 @@ class ArticleGenerator:
         parts.append("")
         return "\n".join(parts)
 
-    def _render_paper_section(self, index: int, analysis: PaperAnalysis) -> list[str]:
+    def _render_paper_section(
+        self, index: int, analysis: PaperAnalysis, figure: Figure | None = None
+    ) -> list[str]:
         paper = analysis.paper
         content = analysis.content or {}
         title_zh = str(content.get("title_zh") or paper.display_title).strip()
@@ -259,6 +268,8 @@ class ArticleGenerator:
         ]
         if content.get("one_line_summary"):
             lines.extend([f"> {str(content['one_line_summary']).strip()}", ""])
+        if figure is not None:
+            lines.extend(_render_figure(figure))
 
         origin = SOURCE_LABELS.get(paper.source, paper.source or "arXiv")
         if paper.is_arxiv:
@@ -326,6 +337,21 @@ class ArticleGenerator:
             lines.append(f"- 开源代码：{NO_REPO_TEXT}")
         lines.append("")
         return lines
+
+
+def _render_figure(figure: Figure) -> list[str]:
+    """论文配图。只搬运，不解释。
+
+    图注逐字引用原文，不改写也不翻译——大模型看不懂图，
+    一旦"描述图里画了什么"就是编造。
+
+    配图放在正文最前面：Figure 1 通常是总览图，
+    读者先看一眼再读文字，比读完了再回头找图更顺。
+    """
+    lines = [f"![原文 Figure 1]({figure.rel_path})", ""]
+    if figure.caption:
+        lines.extend([f"*图注（原文）：{figure.caption}*", ""])
+    return lines
 
 
 def _cn(number: int) -> str:

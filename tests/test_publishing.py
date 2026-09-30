@@ -10,6 +10,8 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import Path
 
 import pytest
 import requests
@@ -57,6 +59,22 @@ class FakeSession:
 
 
 # ----------------------------------------------------------------------
+class TestHtmlStyling:
+    def test_self_closing_image_keeps_valid_markup(self, tmp_path) -> None:
+        """Markdown 输出 <img ... />，插样式时不能把斜杠留在属性中间。"""
+        from publishers.html_publisher import HtmlPublisher
+
+        template = Path(__file__).resolve().parent.parent / "templates" / "article.html"
+        html = HtmlPublisher(tmp_path, template).render(
+            "![图](a/b.png)\n", "标题", "2026-10-01 09:00"
+        )
+        tag = re.search(r"<img[^>]*>", html)
+        assert tag is not None
+        assert " / style" not in tag.group(0)
+        assert 'style="max-width:100%' in tag.group(0)
+        assert 'src="a/b.png"' in tag.group(0)
+
+
 class TestNotify:
     def test_without_token_nothing_is_sent(self, monkeypatch) -> None:
         monkeypatch.delenv("PUSHPLUS_TOKEN", raising=False)

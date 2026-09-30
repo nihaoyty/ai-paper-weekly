@@ -171,6 +171,16 @@ class Paper:
 
 
 @dataclass
+class Figure:
+    """一篇论文的配图（每篇最多一张，取论文的 Figure 1）。"""
+
+    rel_path: str    # 相对 output/ 的路径，Markdown 与 HTML 都用它
+    caption: str     # 原文图注，逐字引用，不改写也不翻译
+    page_url: str    # 图片来源页（arXiv HTML 版）
+    arxiv_id: str
+
+
+@dataclass
 class PaperAnalysis:
     """大模型对单篇论文的解读结果（结构固定，便于校验）。"""
 

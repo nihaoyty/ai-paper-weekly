@@ -8,4 +8,5 @@ PyYAML>=6.0.2           # config/topics.yaml
 python-dotenv>=1.0.1    # 读取 .env
 Jinja2>=3.1.4           # templates/article.html 渲染
 markdown>=3.7           # Markdown -> HTML
+Pillow>=10.3            # 配图缩放与压缩（公众号正文单图上限约 1MB）
 pytest>=8.3.0           # tests/

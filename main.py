@@ -23,12 +23,13 @@ import yaml
 from dotenv import load_dotenv
 
 from collectors.arxiv_client import ArxivClient, ArxivError
+from collectors.arxiv_figures import FigureFetcher
 from collectors.crossref_client import CrossrefClient, CrossrefError
 from collectors.journal_client import JournalClient
 from collectors.openalex_client import OpenAlexClient, OpenAlexError
 from collectors.publication_verifier import PublicationVerifier
 from collectors.venues import abstract_limit, build_clients, collect_all
-from models import ArticleRecord, Paper, PaperStatus, SOURCE_LABELS
+from models import SOURCE_LABELS, ArticleRecord, Figure, Paper, PaperAnalysis, PaperStatus
 from publishers import notifier
 from publishers.html_publisher import HtmlPublisher
 from publishers.markdown_publisher import MarkdownPublisher
@@ -726,6 +727,39 @@ def _enrich(
 # ======================================================================
 # 生成与落盘
 # ======================================================================
+def fetch_figures(
+    config: dict[str, Any], analyses: list[PaperAnalysis], slug: str
+) -> dict[str, Figure]:
+    """给本期每篇论文抓一张 Figure 1，按论文 uid 返回。
+
+    图片落到 output/<期号>/figures/，文章里用相对路径引用，
+    HTML 与 Markdown 都能直接显示。取不到就跳过——
+    配图是锦上添花，绝不能因为它阻断出稿。
+    """
+    fetcher = FigureFetcher(config.get("figures") or {})
+    if not fetcher.enabled:
+        LOGGER.info("figures.enabled=false，本期不配图")
+        return {}
+
+    dest_dir = OUTPUT_DIR / slug / "figures"
+    figures: dict[str, Figure] = {}
+    for index, analysis in enumerate(analyses, start=1):
+        figure = fetcher.fetch(
+            analysis.paper,
+            dest_dir=dest_dir,
+            name=f"{index:02d}",
+            rel_prefix=f"{slug}/figures",
+        )
+        if figure is not None:
+            figures[analysis.paper.uid] = figure
+
+    LOGGER.info(
+        "本期配图：%d/%d 篇取到 Figure 1（取不到 %d 篇）",
+        len(figures), len(analyses), fetcher.skipped,
+    )
+    return figures
+
+
 def generate_article(
     *,
     config: dict[str, Any],
@@ -766,6 +800,10 @@ def generate_article(
     usable_contexts = [contexts_by_id[a.paper.uid] for a in usable]
     synthesis = generator.synthesize(usable, group.name, window_note)
 
+    # 期号要在配图之前算出来：图片按 output/<期号>/figures/ 落盘
+    slug = f"{run_date.isoformat()}-vol{volume:02d}-{group.id}"
+    figures = fetch_figures(config, usable, slug)
+
     generated_at = datetime.now(timezone_of(config)).strftime("%Y-%m-%d %H:%M")
     bundle = generator.build_bundle(
         volume=volume,
@@ -776,9 +814,9 @@ def generate_article(
         synthesis=synthesis,
         model_name=llm.model,
         contexts=usable_contexts,
+        figures=figures,
     )
 
-    slug = f"{run_date.isoformat()}-vol{volume:02d}-{group.id}"
     save_markdown, save_html = output_targets(config)
     if not save_markdown and not save_html:
         LOGGER.error(
