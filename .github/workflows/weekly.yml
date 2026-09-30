@@ -65,6 +65,8 @@ jobs:
           WECHAT_APPID: ${{ secrets.WECHAT_APPID }}
           WECHAT_APPSECRET: ${{ secrets.WECHAT_APPSECRET }}
           WECHAT_COVER_IMAGE: ${{ vars.WECHAT_COVER_IMAGE }}
+          # 配了就让通知里的链接指向 Gitee（github.com 国内直连不通）
+          GITEE_REPO: ${{ vars.GITEE_REPO }}
         run: |
           ARGS=""
           if [ -n "${{ inputs.group }}" ]; then ARGS="$ARGS --group ${{ inputs.group }}"; fi
@@ -96,3 +98,21 @@ jobs:
             git commit -m "chore: 更新本期文章与历史库 [skip ci]"
             git push
           fi
+
+      # github.com 在国内直连不通，手机上点链接必须挂代理。
+      # 把同一个提交同步到 Gitee，通知里的链接就指向国内可直连的地址。
+      - name: 同步到 Gitee
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run != true }}
+        env:
+          GITEE_REPO: ${{ vars.GITEE_REPO }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          if [ -z "${GITEE_REPO}" ] || [ -z "${GITEE_TOKEN}" ]; then
+            echo "未配置 GITEE_REPO / GITEE_TOKEN，跳过 Gitee 同步"
+            exit 0
+          fi
+          GITEE_OWNER="${GITEE_REPO%%/*}"
+          git remote remove gitee 2>/dev/null || true
+          git remote add gitee "https://${GITEE_OWNER}:${GITEE_TOKEN}@gitee.com/${GITEE_REPO}.git"
+          git push gitee "HEAD:${GITHUB_REF_NAME}"
+          echo "已同步到 https://gitee.com/${GITEE_REPO}"

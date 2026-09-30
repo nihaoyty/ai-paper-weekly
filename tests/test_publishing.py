@@ -126,6 +126,7 @@ class TestIssueMessage:
         monkeypatch.setenv("GITHUB_REPOSITORY", "someone/ai-paper")
         monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
         monkeypatch.delenv("GITHUB_REF_NAME", raising=False)
+        monkeypatch.delenv("GITEE_REPO", raising=False)
         assert issue_link("2026-10-05-vol12-g_mon") == (
             "https://github.com/someone/ai-paper/blob/main/output/2026-10-05-vol12-g_mon.md"
         )
@@ -134,13 +135,37 @@ class TestIssueMessage:
         # 仓库默认分支不叫 main 时，写死 main 会让链接 404
         monkeypatch.setenv("GITHUB_REPOSITORY", "someone/ai-paper")
         monkeypatch.setenv("GITHUB_REF_NAME", "master")
+        monkeypatch.delenv("GITEE_REPO", raising=False)
         assert issue_link("slug") == (
             "https://github.com/someone/ai-paper/blob/master/output/slug.md"
         )
 
+    def test_gitee_wins_over_github(self, monkeypatch) -> None:
+        """github.com 国内直连不通，配了 Gitee 就必须优先给 Gitee 链接。"""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "someone/ai-paper")
+        monkeypatch.setenv("GITHUB_REF_NAME", "main")
+        monkeypatch.setenv("GITEE_REPO", "someone/ai-paper-weekly")
+        assert issue_link("slug") == (
+            "https://gitee.com/someone/ai-paper-weekly/blob/main/output/slug.md"
+        )
+
+    def test_gitee_only_setup_needs_no_github_vars(self, monkeypatch) -> None:
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.setenv("GITEE_REPO", "someone/ai-paper-weekly")
+        assert issue_link("slug").startswith("https://gitee.com/")
+
+    def test_trailing_slash_in_gitee_repo_is_tolerated(self, monkeypatch) -> None:
+        monkeypatch.setenv("GITEE_REPO", "someone/ai-paper-weekly/")
+        assert "gitee.com/someone/ai-paper-weekly/blob" in issue_link("slug")
+
     def test_issue_link_is_empty_off_actions(self, monkeypatch) -> None:
         monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("GITEE_REPO", raising=False)
         assert issue_link("2026-10-05-vol12-g_mon") == ""
+
+    def test_empty_slug_yields_no_link(self, monkeypatch) -> None:
+        monkeypatch.setenv("GITEE_REPO", "someone/ai-paper-weekly")
+        assert issue_link("") == ""
 
     def test_link_is_included_when_available(self) -> None:
         _, content = build_issue_message(

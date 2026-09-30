@@ -70,16 +70,22 @@ def notify(title: str, content: str, token: Optional[str] = None) -> bool:
 def issue_link(slug: str) -> str:
     """本期文章在仓库里的地址。
 
-    GitHub Actions 会自动注入 GITHUB_REPOSITORY 与 GITHUB_REF_NAME，
-    所以云端跑的通知里能带一个可点的链接；本地跑时为空串
-    （本地文件在手机上点不开）。
+    优先给 Gitee：github.com 在国内直连不通，手机上点链接要挂代理，
+    而 gitee.com 可直连，所以配了 Gitee 就优先用它。
+    没配时退回 GitHub（本地跑时两者都为空串，本地文件在手机上点不开）。
     """
+    if not slug:
+        return ""
+    branch = os.getenv("GITHUB_REF_NAME", "").strip() or "main"
+
+    gitee_repo = os.getenv("GITEE_REPO", "").strip().strip("/")
+    if gitee_repo:
+        return f"https://gitee.com/{gitee_repo}/blob/{branch}/output/{slug}.md"
+
     repo = os.getenv("GITHUB_REPOSITORY", "").strip()
-    if not repo or not slug:
+    if not repo:
         return ""
     server = os.getenv("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
-    # 分支不能写死 main：仓库默认分支可能是 master 或别的名字
-    branch = os.getenv("GITHUB_REF_NAME", "").strip() or "main"
     return f"{server}/{repo}/blob/{branch}/output/{slug}.md"
 
 
