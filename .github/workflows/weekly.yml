@@ -1,0 +1,98 @@
+name: AI 论文周报
+
+# 周一 / 周三 / 周五 北京时间 09:00 各生成一期。
+# cron 用的是 UTC，北京时间减 8 小时即 01:00。
+on:
+  schedule:
+    - cron: "0 1 * * 1,3,5"
+  # 手动触发：配好后先用它试跑一次，别等定时
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "主题组：g_mon / g_wed / g_fri（留空则按运行日自动选择）"
+        required: false
+      dry_run:
+        description: "只检索与筛选，不调用大模型、不写历史库"
+        type: boolean
+        default: false
+
+# 需要写权限才能把历史库与本期产物提交回仓库
+permissions:
+  contents: write
+
+# 同一时间只跑一期，避免两次运行抢着写历史库
+concurrency:
+  group: ai-paper-weekly
+  cancel-in-progress: false
+
+jobs:
+  issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 单元测试
+        run: python -m pytest tests -q
+
+      # 论文集大文件（ACL Anthology 的 BibTeX 有 40MB）没必要每次重下
+      - name: 缓存论文集大文件
+        uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: venue-cache-${{ github.run_id }}
+          restore-keys: venue-cache-
+
+      - name: 生成本期文章
+        env:
+          # 必填：没有它无法调用大模型
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # 以下都可不填，留空时程序用默认值 / 静默跳过
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_MAX_TOKENS: ${{ vars.LLM_MAX_TOKENS }}
+          OPENALEX_MAILTO: ${{ secrets.OPENALEX_MAILTO }}
+          CROSSREF_MAILTO: ${{ secrets.CROSSREF_MAILTO }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          WECHAT_APPID: ${{ secrets.WECHAT_APPID }}
+          WECHAT_APPSECRET: ${{ secrets.WECHAT_APPSECRET }}
+          WECHAT_COVER_IMAGE: ${{ vars.WECHAT_COVER_IMAGE }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.group }}" ]; then ARGS="$ARGS --group ${{ inputs.group }}"; fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          set +e
+          python main.py ${ARGS}
+          code=$?
+          set -e
+          # 退出码 3 表示「候选不足，本期未生成」。这是配置允许的正常结果
+          # （宁缺毋滥），不该让整条流水线变红；消息已经推到微信了。
+          if [ "$code" -eq 3 ]; then
+            echo "::notice::候选不足，本期未生成文章（退出码 3，属正常结果）"
+            exit 0
+          fi
+          exit "$code"
+
+      - name: 提交历史库与本期产物
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run != true }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # output/ 在 .gitignore 里（本地阅读用），但云端跑时要靠仓库把文章
+          # 送到你手机上，所以这里强制加入版本管理。
+          git add -f data/published.json
+          git add -f output
+          if git diff --cached --quiet; then
+            echo "没有需要提交的变更"
+          else
+            git commit -m "chore: 更新本期文章与历史库 [skip ci]"
+            git push
+          fi

@@ -1,0 +1,23 @@
+# 密钥与本地配置
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# 生成产物（每期文章，本地阅读用，不入库）
+# 注意：GitHub Actions 里用 git add -f 强制提交，那是为了让云端产物
+# 能通过仓库送到手机上；本地默认不入库，避免 git status 一直有噪音。
+output/*.md
+output/*.html
+output/*.json
+
+# 论文集大文件缓存（ACL Anthology 的 BibTeX 40MB 等），可随时重新下载
+data/cache/
+
+# 系统
+.DS_Store

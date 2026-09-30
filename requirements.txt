@@ -1,0 +1,11 @@
+# AI Paper Weekly —— Phase 1 依赖
+# 安装：python3.12 -m pip install -r requirements.txt
+
+openai>=1.40.0          # 大模型调用（OpenAI 兼容协议，可对接阿里云百炼）
+requests>=2.32.0        # arXiv / OpenAlex HTTP 请求
+feedparser>=6.0.11      # 解析 arXiv Atom 返回
+PyYAML>=6.0.2           # config/topics.yaml
+python-dotenv>=1.0.1    # 读取 .env
+Jinja2>=3.1.4           # templates/article.html 渲染
+markdown>=3.7           # Markdown -> HTML
+pytest>=8.3.0           # tests/

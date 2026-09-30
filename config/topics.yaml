@@ -1,0 +1,603 @@
+# ============================================================
+# AI Paper Weekly 配置文件
+#
+# 目标：
+# 1. 每周一、三、五生成一期 AI 论文公众号文章
+# 2. 每周累计精选 10 篇论文：周一 3、周三 3、周五 4
+# 3. 优先选择 2026 年正式发表或录用的顶刊顶会论文
+# 4. 允许少量预印本，但必须明确标注论文状态
+# 5. 论文不足时允许减少数量，不编造论文或发表信息
+#
+# 修改配置后，需要确保 Python 程序已实现对应的读取逻辑。
+# 各键的实际生效范围见 README.md 的「配置生效范围」一节：
+# 标了「声明性」的键只描述既有行为，改动它不会改变程序行为。
+# ============================================================
+
+# 生效：文章生成时间按此时区计算（在 UTC 的 CI 机器上尤其重要）
+timezone: Asia/Shanghai
+
+# ============================================================
+# 一、每周论文数量规划
+# ============================================================
+
+weekly_plan:
+  target_count: 10
+  week_start: mon
+  carry_shortfall: true
+  max_per_issue: 10
+  deduplicate_within_week: true
+  deduplicate_history: true
+  # 声明性：程序在论文不足时本来就允许少出，不存在「凑数」分支
+  allow_under_target: true
+
+
+# ============================================================
+# 二、每周一、三、五的主题安排
+#
+# select_count 表示该日的目标篇数。正式发表论文不足时会自动减少，
+# 不会用预印本补位（见第六节 max_preprints_per_issue）。
+# ============================================================
+
+schedule:
+  mon:
+    group: g_mon
+    select_count: 3
+    min_select_count: 2
+
+  wed:
+    group: g_wed
+    select_count: 3
+    min_select_count: 2
+
+  fri:
+    group: g_fri
+    select_count: 4
+    min_select_count: 2
+
+
+# ============================================================
+# 三、主题组
+# ============================================================
+
+groups:
+  - id: g_mon
+    name: "大模型推理与 AI Agent"
+    topics:
+      - llm_reasoning
+      - agent_coding
+
+  - id: g_wed
+    name: "AI 系统工程、推理加速与多模态"
+    topics:
+      - ai_systems
+      - multimodal
+
+  - id: g_fri
+    name: "强化学习、AI 安全与 AI for Science"
+    topics:
+      - rl_training
+      - ai_safety
+      - ai4science_robotics
+
+
+# ============================================================
+# 四、论文检索参数
+# ============================================================
+
+search:
+  # 当前重点关注的论文年份。会议论文集按年组织，因此按年份筛选。
+  target_year: 2026
+
+  # arXiv 侧的时间窗：优先最近 14 天
+  primary_window_days: 14
+  fallback_window_days: 30
+  allow_under_target: true
+
+  # 每次收集的原始候选上限。要覆盖 arXiv + 期刊 + 5 个会议来源，
+  # 200 篇不够用，实测需要放宽到 800。
+  max_candidates: 800
+
+  min_relevant: 6
+  min_select_count: 2
+
+  # 只对得分最高的前 N 篇补 OpenAlex 元数据。
+  # 注意：会议论文与期刊论文已由官方论文集/出版记录核验，不再反查 OpenAlex，
+  # 否则既浪费请求又会触发 429。
+  enrich_top_n: 30
+  # 生效：false 时整期跳过发表状态核验，arXiv 论文保持「待核实」
+  verify_publication: true
+
+  min_score: 6.0
+  diversity_ratio: 0.8
+
+  # 关键词命中位置门槛：arXiv 论文标题里必须至少命中一个关键词。
+  # 只对 arXiv 生效——期刊与会议标题是自然语言写法，套用术语门槛会把它们全挡掉。
+  require_title_match: true
+
+  # 综述/社论等非原始研究体裁的标题特征，命中即排除
+  exclude_title_patterns:
+    - "a survey"
+    - "survey of"
+    - "systematic review"
+    - "literature review"
+    - "a review of"
+    - "an overview"
+    - "overview of"
+    - "a tutorial"
+    - "position paper"
+    - "empirical study of the state"
+
+  arxiv_categories:
+    - cs.CL
+    - cs.LG
+    - cs.AI
+    - cs.CV
+    - cs.MA
+    - cs.RO
+    - cs.SE
+    - cs.DC
+    - cs.AR
+    - stat.ML
+
+  # ---- 期刊通道（OpenAlex 独立检索，非补元数据）----
+  # 只放 AI 相关期刊。综合刊 Nature / Science 实测 95 篇候选里 60 篇是
+  # 非 AI 内容，纯噪音且白烧配额，所以不收。
+  journals:
+    enabled: true
+    window_days: 180
+    per_source: 50
+    sources:
+      - Nature Machine Intelligence
+      - Journal of Machine Learning Research
+      - Transactions on Machine Learning Research
+      - Transactions of the Association for Computational Linguistics
+      - IEEE Transactions on Pattern Analysis and Machine Intelligence
+
+
+# ============================================================
+# 五、论文来源及时间判断
+# ============================================================
+
+retrieval:
+  # 声明性：arXiv 与 OpenAlex 的通道开关、日期字段都由程序固定，无法从此处关闭
+  arxiv:
+    enabled: true
+    date_field: first_published_date
+
+  openalex:
+    enabled: true
+    # 独立检索近期正式发表的论文，不是只用来补元数据
+    independent_search: true
+    date_field: publication_date
+
+  official_venues:
+    # 生效：关闭后完全不跑会议论文集通道
+    enabled: true
+
+    # 声明性：程序只有「按需抓候选的摘要」这一种策略，没有全量抓的分支
+    verify_final_candidates: true
+
+    # 列表页只有标题，摘要必须逐篇抓；只对通过初筛的候选抓，绝不全量抓
+    abstract_strategy: fetch_for_candidates
+    # 生效：单期最多补多少篇摘要
+    abstract_limit_per_issue: 120
+    # 生效：论文集大文件的缓存位置与有效期
+    cache_dir: data/cache
+    cache_ttl_days: 7
+
+    # 会议论文集来源。2026-09 实测：
+    #   ICLR 官方 virtual 站点可抓（OpenReview API 已被人机验证封死）
+    #   CVPR / ICCV 走 CVF Open Access
+    #   ACL / EMNLP / NAACL 走 ACL Anthology 全量 BibTeX（自带摘要）
+    #   ICML 走 PMLR、NeurIPS 走官方 proceedings
+    #   后两者 2026 卷尚未发布，程序会自动扫描并在缺失时告警，不会编造
+    sources:
+      - id: iclr_virtual
+        enabled: true
+        venues: [ICLR]
+        years: [2026]
+      - id: cvf
+        enabled: true
+        venues: [CVPR, ICCV, ECCV]
+        years: [2026]
+      - id: acl_anthology
+        enabled: true
+        venues: [ACL, EMNLP, NAACL]
+        years: [2026]
+      - id: pmlr
+        enabled: true
+        venues: [ICML, COLM]
+        years: [2026]
+      - id: neurips
+        enabled: true
+        venues: [NeurIPS]
+        years: [2026]
+
+  # 声明性：合并去重是程序的固定行为，无法关闭
+  merge_duplicate_records: true
+
+
+# ============================================================
+# 六、论文发表状态与选文优先级
+# ============================================================
+
+publication:
+  # 声明性：程序的状态取值固定为这四种，且绝不用大模型推测
+  allowed_statuses:
+    - published
+    - accepted
+    - preprint
+
+  # 声明性：排序在代码里体现为「正式发表优先」的选文与补位顺序
+  priority:
+    - published
+    - accepted
+    - preprint
+
+  # 声明性：程序本身就只按白名单来源认定正式发表，不存在放宽分支
+  require_verified_venue: true
+  require_acceptance_evidence: true
+
+  # 不允许仅凭 OpenAlex 的来源名称就认定正式发表，
+  # 必须用下面的 verification 指定的权威渠道核验。
+  openalex_venue_match_is_sufficient: false
+
+  # 「官方证据」具体指什么：
+  #   期刊 -> Crossref（DOI 注册机构，权威）
+  #   会议 -> 会议官方论文集页面（ICLR virtual / CVF / ACL Anthology / PMLR / NeurIPS）
+  #   arXiv -> OpenAlex（仅用于判断预印本还是已被收录）
+  verification:
+    journals: crossref
+    conferences: official_proceedings
+    arxiv: openalex
+
+  allow_preprints: true
+
+  # 硬约束：每期最多 1 篇预印本。正式发表不足时宁可少出，也不用预印本凑数。
+  max_preprints_per_issue: 1
+
+  year_basis:
+    published: venue_publication_date
+    accepted: official_acceptance_date
+    preprint: first_published_date
+
+  # 以下四项都是程序本就遵守的底线，不提供放宽开关：
+  # 未核实不能标成正式发表、论文必须有可核验来源、状态必须展示、不得编造论文
+  allow_unverified_as_published: false
+  require_verifiable_paper_source: true
+  show_status_in_article: true
+  allow_fabricated_papers: false
+
+
+# ============================================================
+# 七、顶会 / 顶刊白名单
+#
+# 匹配方式：
+#   contains —— 名称或别名作为独立词出现在来源名中（默认）
+#   exact    —— 归一化后完全相等
+# ============================================================
+
+venue_whitelist:
+  - name: NeurIPS
+    aliases: ["Neural Information Processing Systems", "NIPS"]
+  - name: ICML
+    aliases: ["International Conference on Machine Learning"]
+  - name: ICLR
+    aliases: ["International Conference on Learning Representations"]
+  - name: AAAI
+    aliases: ["AAAI Conference on Artificial Intelligence"]
+  - name: IJCAI
+    aliases: ["International Joint Conference on Artificial Intelligence"]
+  - name: ACL
+    aliases: ["Annual Meeting of the Association for Computational Linguistics"]
+  - name: EMNLP
+    aliases: ["Empirical Methods in Natural Language Processing"]
+  - name: NAACL
+    aliases: ["North American Chapter of the Association for Computational Linguistics"]
+  - name: CVPR
+    aliases: ["Computer Vision and Pattern Recognition"]
+  - name: ICCV
+    aliases: ["International Conference on Computer Vision"]
+  - name: ECCV
+    aliases: ["European Conference on Computer Vision"]
+  - name: MLSys
+    aliases: ["Conference on Machine Learning and Systems"]
+  - name: COLM
+    aliases: ["Conference on Language Modeling"]
+  - name: TMLR
+    aliases: ["Transactions on Machine Learning Research"]
+  - name: JMLR
+    aliases: ["Journal of Machine Learning Research"]
+  - name: TPAMI
+    aliases:
+      - Transactions on Pattern Analysis and Machine Intelligence
+      - IEEE Transactions on Pattern Analysis and Machine Intelligence
+  - name: TACL
+    aliases: ["Transactions of the Association for Computational Linguistics"]
+  - name: Nature Machine Intelligence
+    match: exact
+  - name: Nature
+    match: exact
+  - name: Science
+    match: exact
+
+
+# ============================================================
+# 八、研究方向与关键词
+#
+# keywords_strong 命中权重 3，keywords 命中权重 1。
+# 标题命中权重是摘要命中的 2 倍。
+# ============================================================
+
+topics:
+  - id: llm_reasoning
+    name: "大语言模型与推理能力"
+    # large language model / llms 在 cs.CL 里几乎每篇都有，只能作为弱关键词
+    keywords_strong:
+      - chain-of-thought
+      - long context
+      - in-context learning
+      - reasoning
+      - test-time scaling
+      - context window
+    keywords:
+      - large language model
+      - llms
+      - transformer
+      - instruction tuning
+      - mathematical reasoning
+      - code generation
+      - mixture-of-experts
+      - scaling law
+      - attention
+      - decoder-only
+      - pretraining
+      - prompt
+      - tokenizer
+      - self-consistency
+
+  - id: agent_coding
+    name: "AI Agent 与自动化编程"
+    keywords_strong:
+      - multi-agent
+      - llm agent
+      - tool use
+      - tool calling
+      - function calling
+      - software engineering agent
+      - agentic
+    keywords:
+      - code understanding
+      - repository-level
+      - swe-bench
+      - task planning
+      - autonomous
+      - workflow
+      - code review
+      - program synthesis
+      - debugging
+      - computer-use
+
+  - id: ai_systems
+    name: "AI 系统工程与推理加速"
+    keywords_strong:
+      - inference acceleration
+      - kv cache
+      - speculative decoding
+      - quantization
+      - efficient inference
+      - distributed training
+      - serving
+    keywords:
+      - throughput
+      - latency
+      - batching
+      - prefill
+      - decode
+      - flashattention
+      - kernel
+      - compiler
+      - scheduling
+      - offloading
+      - parallelism
+      - gpu
+      - memory footprint
+      - moe routing
+      - energy efficiency
+
+  - id: multimodal
+    name: "多模态与内容生成"
+    keywords_strong:
+      - vision-language
+      - multimodal
+      - video generation
+      - text-to-image
+      - text-to-video
+      - speech
+    keywords:
+      - diffusion model
+      - vlm
+      - cross-modal
+      - visual question answering
+      - image editing
+      - audio
+      - 3d generation
+      - image generation
+      - unified model
+      - grounding
+
+  - id: rl_training
+    name: "强化学习与大模型训练"
+    keywords_strong:
+      - reinforcement learning
+      - rlhf
+      - grpo
+      - dpo
+      - reward model
+      - policy optimization
+    keywords:
+      - post-training
+      - alignment
+      - fine-tuning
+      - lora
+      - distillation
+      - training efficiency
+      - data curation
+      - self-play
+      - preference optimization
+      - verifier
+
+  - id: ai_safety
+    name: "AI 安全与模型评测"
+    keywords_strong:
+      - prompt injection
+      - jailbreak
+      - ai safety
+      - agent security
+      - interpretability
+      - adversarial
+    keywords:
+      - benchmark
+      - hallucination
+      - robustness
+      - reliability
+      - red teaming
+      - guardrail
+      - watermark
+      - privacy
+      - uncertainty
+      - evaluation suite
+      - alignment faking
+
+  - id: ai4science_robotics
+    name: "AI for Science 与机器人"
+    keywords_strong:
+      - embodied
+      - robot
+      - robotic
+      - scientific discovery
+      - world model
+      - manipulation
+    keywords:
+      - protein
+      - materials
+      - molecule
+      - simulation
+      - navigation
+      - grasping
+      - autonomy
+      - control policy
+      - physical reasoning
+      - automated laboratory
+      - foundation model for science
+
+
+# ============================================================
+# 九、文章生成要求
+# ============================================================
+
+article:
+  # 声明性：中文输出与「通俗解读 + 技术要点」的写法由 prompts 固定
+  language: zh-CN
+  articles_per_issue: 1
+  depth: "通俗解读 + 技术要点"
+
+  # 声明性：章节结构由 prompts 与渲染器固定，不按此表动态拼装
+  sections:
+    - issue_introduction
+    - paper_title
+    - publication_date
+    - venue
+    - publication_status
+    - research_problem
+    - previous_methods
+    - core_innovation
+    - technical_details
+    - experimental_results
+    - limitations
+    - practical_applications
+    - official_paper_url
+    - github_url
+    - issue_summary
+
+  include_source_links: true
+  include_verified_code_links: true
+  show_publication_status: true
+  require_verifiable_experimental_results: true
+  allow_fabricated_claims: false
+
+  # 与 publishing.save_markdown / save_html 同时生效：两者都允许才输出该格式
+  output_formats:
+    - markdown
+    - html
+
+  # ---- 篇幅预算 ----
+  # 每期篇数由 schedule.select_count 决定（3/3/4），篇幅按篇数换算：
+  # 3 篇时正文约 3270 字，4 篇时约 4170 字。
+  # 实测大模型对字数上限执行偏松（超 20~40%），超出部分写进校验报告但不阻断发布。
+  tolerance: 1.25
+  field_budgets:
+    one_line_summary: [0, 40]
+    background: [80, 110]
+    core_problem: [60, 90]
+    prior_work: [70, 100]
+    innovation: [80, 110]
+    method: [130, 170]
+    experiments: [70, 100]
+    limitations: [50, 80]
+    practical_value: [70, 100]
+  synthesis_budgets:
+    intro: [150, 220]
+    connections: [100, 150]
+    trend: [70, 100]
+    next_steps: [70, 100]
+
+
+# ============================================================
+# 十、公众号发布策略
+# ============================================================
+
+publishing:
+  # 声明性：本项目只做本地生成，没有远程发布通道
+  mode: local
+  # 生效：与 article.output_formats 共同决定本期输出哪些文件
+  save_markdown: true
+  save_html: true
+
+  # 出稿后把「本期已生成」推到微信（PushPlus，token 见 .env 的 PUSHPLUS_TOKEN）。
+  # 云端定时跑时这条是刚需：没人盯着终端，成功与失败都得让你知道。
+  notify:
+    enabled: true
+
+  wechat:
+    # 生效：true 且配好 WECHAT_APPID / WECHAT_APPSECRET / WECHAT_COVER_IMAGE 时建草稿。
+    # 注意：调用来源 IP 必须在公众号的 IP 白名单里，GitHub Actions 的动态 IP
+    # 会被 40164 拒绝，所以这一项目前只能在白名单内的机器上跑（见 README）。
+    enabled: false
+    # 以下两项订阅号没有权限，置 true 只会收到一条告警，程序仍只建草稿
+    auto_publish: false
+    auto_mass_send: false
+
+    # 声明性：人工复核流程本身不在程序里强制执行
+    require_manual_review: true
+
+
+# ============================================================
+# 十一、历史记录与去重
+# ============================================================
+
+storage:
+  type: json
+
+  # 历史库位置。相对路径按项目根目录解析。
+  paper_history_path: data/published.json
+
+  # 声明性：程序实际使用的稳定标识是「arXiv ID / DOI / OpenAlex ID / 官方论文页地址」
+  # 这一组超集。之所以不止 doi 与 arxiv_id，是因为会议论文集论文两者都没有，
+  # 只认这两项会让它们失去去重能力，从而跨期重复推荐。
+  deduplication_keys:
+    - doi
+    - arxiv_id
+  count_only_finalized_articles: true
+  # 声明性：公众号发布状态跟踪依赖发布流程，目前 publishing 未启用自动发布
+  track_publication_status: true
